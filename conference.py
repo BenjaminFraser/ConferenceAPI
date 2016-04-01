@@ -522,6 +522,7 @@ class ConferenceApi(remote.Service):
         # copy SessionForm/ProtoRPC Message into dict
         data = {field.name: getattr(request, field.name) for field in request.all_fields()}
         del data['websafeKey']
+        del data['websafeConferenceKey']
         del data['creatorDisplayName']
 
         # add default values for those missing (both data model & outbound Message)
@@ -546,7 +547,10 @@ class ConferenceApi(remote.Service):
         # create Session & return (modified) SessionForm
         Session(**data).put()
 
-        return request
+        # create a SessionForm object and return.
+        session_object = self._copySessionToForm(data)
+
+        return session_object
 
 
     # Provide a transaction for updating a session.
@@ -590,7 +594,7 @@ class ConferenceApi(remote.Service):
 
     # Create a new Session endpoint definition.
     @endpoints.method(SESSION_CREATE_REQUEST, SessionForm,
-            path='conference/{websafeConferenceKey}/session',
+            path='conference/{websafeConferenceKey}/session/create',
             http_method='POST', name='createSession')
     def createSession(self, request):
         """Create new session."""

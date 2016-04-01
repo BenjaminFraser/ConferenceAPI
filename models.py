@@ -125,7 +125,7 @@ class Session(ndb.Model):
     duration        = ndb.IntegerProperty()
     startTime       = ndb.StringProperty()
     typeOfSession   = ndb.StringProperty()
-    creatorUserId   = ndb.KeyProperty()
+    creatorUserId   = ndb.StringProperty()
 
 # Define a session form class, allowing form conference creation
 class SessionForm(messages.Message):
