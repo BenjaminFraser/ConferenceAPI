@@ -1,0 +1,3 @@
+How to run Google Chrome with selected flags whilst hosting in developer mode:
+
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --user-data-dir=test --unsafely-treat-insecure-origin-as-secure=http://localhost:5080

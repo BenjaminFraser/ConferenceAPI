@@ -1,0 +1,56 @@
+application: scalable-apps-1237
+version: 1
+runtime: python27
+api_version: 1
+threadsafe: yes
+
+handlers:       # static then dynamic
+
+- url: /favicon\.ico
+  static_files: favicon.ico
+  upload: favicon\.ico
+
+- url: /js
+  static_dir: static/js
+
+- url: /img
+  static_dir: static/img
+
+- url: /css
+  static_dir: static/bootstrap/css
+
+- url: /fonts
+  static_dir: static/fonts
+
+- url: /partials
+  static_dir: static/partials
+
+- url: /
+  static_files: templates/index.html
+  upload: templates/index\.html
+  secure: always
+
+- url: /_ah/spi/.*
+  script: conference.api
+  secure: always
+
+# handler for announcement handler for memcache. Only admins can access.
+- url: /crons/set_announcement
+  script: main.app
+
+# Handler for task queues, send a confirmation email.
+- url: /tasks/send_confirmation_email
+  script: main.app
+  login: admin
+
+libraries:
+
+- name: webapp2
+  version: latest
+
+- name: endpoints
+  version: latest
+
+# pycrypto library used for OAuth2 (req'd for authenticated APIs)
+- name: pycrypto
+  version: latest
