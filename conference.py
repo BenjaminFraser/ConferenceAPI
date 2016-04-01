@@ -645,19 +645,20 @@ class ConferenceApi(remote.Service):
         if not user:
             raise endpoints.UnauthorizedException('Authorization required')
         user_id = getUserId(user)
-
-        # create ancestor query for all key matches for this user
-        created_sessions = Session.query(ancestor=ndb.Key(Profile, user_id))
-        prof = ndb.Key(Profile, user_id).get()
-        # return set of SessionForm objects per Session
+        # create a datastore query for sessions created by user id.
+        q = Session.query()
+        # Filter this initial query through using .filter() method.
+        q = q.filter(Session.creatorUserId == user_id)
+        # Return the queried sessions as a SessionForm object.
         return SessionForms(
-            items=[self._copySessionToForm(sesh, getattr(prof, 'displayName')) for sesh in created_sessions]
+            items=[self._copySessionToForm(sesh, "") \
+            for sesh in q]
         )
 
 
     # Endpoint for updating the conference selected.
     @endpoints.method(SESH_POST_REQUEST, SessionForm,
-            path='session/{websafeSessionKey}',
+            path='session/{websafeSessionKey}/update',
             http_method='PUT', name='updateSession')
     def updateSession(self, request):
         """Update session w/provided fields & return w/updated info."""
@@ -678,6 +679,25 @@ class ConferenceApi(remote.Service):
         prof = sesh.key.parent().get()
         # return SessionForm
         return self._copySessionToForm(sesh, getattr(prof, 'displayName'))
+
+    # Return sessions for the selected conference by websafeConferenceKey
+    @endpoints.method(CONF_GET_REQUEST, SessionForms,
+            path='conference/{websafeConferenceKey}/sessions',
+            http_method='GET', name='conferenceSessions')
+    def getConferenceSessions(self, request):
+        """ Return the requested conference's sessions. """
+        # get Conference object from request; bail if not found
+        conf = ndb.Key(urlsafe=request.websafeConferenceKey).get()
+        if not conf:
+            raise endpoints.NotFoundException(
+                'No conference found with key: %s' % request.websafeConferenceKey)
+        # query all sessions within the conference entity.
+        conf_sessions = Session.query(ancestor=ndb.Key(Conference, conf.id))
+        # Return the queried sessions as a SessionForm object.
+        return SessionForms(
+            items=[self._copySessionToForm(sesh, "") \
+            for sesh in conf_sessions]
+        )
 
 # - - - Registration - - - - - - - - - - - - - - - - - - - -
     
