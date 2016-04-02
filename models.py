@@ -158,6 +158,10 @@ class SessionQueryForms(messages.Message):
     """SessionQueryForms -- multiple SessionQueryForm inbound form message"""
     filters = messages.MessageField(SessionQueryForm, 1, repeated=True)
 
+class SessionTypeQuery(messages.Message):
+    """SessionTypeQuery -- Session type inbound form message."""
+    session_type = messages.StringField(1, required=True)
+
 # needed for conference registration
 class BooleanMessage(messages.Message):
     """BooleanMessage-- outbound Boolean value message"""

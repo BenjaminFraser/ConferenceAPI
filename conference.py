@@ -34,7 +34,8 @@ from models import ConferenceForm
 from models import ConferenceForms
 from models import ConferenceQueryForm
 from models import ConferenceQueryForms
-from models import Session, SessionForm, SessionForms, SessionQueryForms
+from models import Session, SessionForm, SessionForms
+from models import SessionQueryForms, SessionTypeQuery
 from models import BooleanMessage
 from models import ConflictException
 from models import StringMessage
@@ -123,6 +124,11 @@ SESH_POST_REQUEST =  endpoints.ResourceContainer(
     websafeSessionKey=messages.StringField(1),
 )
 
+# session type request container for obtaining sessions of a certain type.
+SESSION_TYPE_REQUEST = endpoints.ResourceContainer(
+    SessionTypeQuery,
+    websafeConferenceKey=messages.StringField(1),
+)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -769,6 +775,27 @@ class ConferenceApi(remote.Service):
             items=[self._copySessionToForm(sesh, "") \
             for sesh in conf_sessions]
         )
+
+
+    @endpoints.method(SESSION_TYPE_REQUEST, SessionForms,
+            path='conference/{websafeConferenceKey}/sessions/type',
+            http_method='POST', name='conferenceSessionsByType')
+    def getConferenceSessionsByType(self, request):
+        """ Return the conferences sessions of chosen type. """
+        conf = ndb.Key(urlsafe=request.websafeConferenceKey).get()
+        if not conf:
+            raise endpoints.NotFoundException(
+                'No conference found with key: %s' % request.websafeConferenceKey)
+        # query all sessions within the conference entity.
+        q = Session.query(ancestor=conf.key)
+        # refine the search by type of session chosen in the request.
+        session_by_type = q.filter(Session.typeOfSession == request.session_type)
+        # Return the queried sessions as a SessionForm object.
+        return SessionForms(
+            items=[self._copySessionToForm(sesh, "") \
+            for sesh in session_by_type]
+        )
+
 
 # - - - Registration - - - - - - - - - - - - - - - - - - - -
     
