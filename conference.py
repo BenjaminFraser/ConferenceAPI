@@ -459,14 +459,22 @@ class ConferenceApi(remote.Service):
         for f in filters:
             filtr = {field.name: getattr(f, field.name) for field in f.all_fields()}
 
-            try:
-                if queryType == 'conference':
+            if queryType == 'conference':
+                try:
                     filtr["field"] = CONF_FIELDS[filtr["field"]]
-                elif queryType == 'conf_session':
+                    filtr["operator"] = OPERATORS[filtr["operator"]]
+                except KeyError:
+                    raise endpoints.BadRequestException(
+                        "Filter contains invalid field or operator for conferences.")
+
+            if queryType == 'conf_sessions':
+                try:
                     filtr["field"] = SESSION_FIELDS[filtr["field"]]
-                filtr["operator"] = OPERATORS[filtr["operator"]]
-            except KeyError:
-                raise endpoints.BadRequestException("Filter contains invalid field or operator.")
+                    filtr["operator"] = OPERATORS[filtr["operator"]]
+                except KeyError:
+                    raise endpoints.BadRequestException(
+                        "Filter contains invalid field or operator for sessions.")
+
 
             # Every operation except "=" is an inequality
             if filtr["operator"] != "=":
@@ -505,11 +513,12 @@ class ConferenceApi(remote.Service):
     def _copySessionToFormAfterCreation(self, data, theSession):
         """Copy data fields from Session object creation to SessionForm."""
 
+        # get the session object, create urlsafe key and place in data.
         extracted_session = theSession.get()
-        logging.info(extracted_session)
         urlsafe_session_key = extracted_session.key.urlsafe()
         data['websafeKey'] = urlsafe_session_key
 
+        # obtain the creators display name from the user id.
         prof = ndb.Key(Profile, data['creatorUserId']).get()
         data['creatorDisplayName'] = prof.displayName
 
@@ -533,7 +542,7 @@ class ConferenceApi(remote.Service):
                 if field.name == 'date':
                     setattr(sesh, field.name, str(data[field.name]))
                 elif field.name == 'duration':
-                    setattr(sesh, field.name, str(data[field.name]))
+                    setattr(sesh, field.name, int(data[field.name]))
                 else:
                     setattr(sesh, field.name, data[field.name])
             elif field.name == 'websafeKey':
@@ -585,6 +594,11 @@ class ConferenceApi(remote.Service):
         # convert dates from strings to Date objects; set month based on start_date
         if data['date']:
             data['date'] = datetime.strptime(data['date'][:10], "%Y-%m-%d").date()
+
+        # ensure input duration is an integer.
+        if data['duration']:
+            logging.info("Converting duration into integer!!!!")
+            data['duration'] = int(data['duration'])
 
         # allocate new Session ID with Conference key as parent
         s_id = Session.allocate_ids(size=1, parent=conf_key)[0]
@@ -749,7 +763,7 @@ class ConferenceApi(remote.Service):
             raise endpoints.NotFoundException(
                 'No conference found with key: %s' % request.websafeConferenceKey)
         # query all sessions within the conference entity.
-        conf_sessions = Session.query(ancestor=ndb.Key(Conference, conf.id))
+        conf_sessions = Session.query(ancestor=conf.key)
         # Return the queried sessions as a SessionForm object.
         return SessionForms(
             items=[self._copySessionToForm(sesh, "") \
