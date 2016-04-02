@@ -160,7 +160,11 @@ class SessionQueryForms(messages.Message):
 
 class SessionTypeQuery(messages.Message):
     """SessionTypeQuery -- Session type inbound form message."""
-    session_type = messages.StringField(1, required=True)
+    session_type = messages.StringField(1)
+
+class SessionSpeakerQuery(messages.Message):
+    """SessionSpeakerQuery -- Session speaker inbound form message."""
+    speaker = messages.StringField(1)
 
 # needed for conference registration
 class BooleanMessage(messages.Message):

@@ -35,7 +35,7 @@ from models import ConferenceForms
 from models import ConferenceQueryForm
 from models import ConferenceQueryForms
 from models import Session, SessionForm, SessionForms
-from models import SessionQueryForms, SessionTypeQuery
+from models import SessionQueryForms, SessionTypeQuery, SessionSpeakerQuery
 from models import BooleanMessage
 from models import ConflictException
 from models import StringMessage
@@ -794,6 +794,20 @@ class ConferenceApi(remote.Service):
         return SessionForms(
             items=[self._copySessionToForm(sesh, "") \
             for sesh in session_by_type]
+        )
+
+
+    @endpoints.method(SessionSpeakerQuery, SessionForms,
+            path='speakers/sessions',
+            http_method='POST', name='conferenceSessionsBySpeaker')
+    def getSessionsBySpeaker(self, request):
+        """ Return all sessions featuring the chosen speaker. """
+        # query all sessions with requested speaker.
+        speaker_sessions = Session.query(Session.speaker == request.speaker)
+        # Return the queried sessions as a SessionForm object.
+        return SessionForms(
+            items=[self._copySessionToForm(sesh, "") \
+            for sesh in speaker_sessions]
         )
 
 
