@@ -67,13 +67,21 @@ OPERATORS = {
             'NE':   '!='
             }
 
-# Fields for query options.
-FIELDS =    {
+# Fields for conference query options.
+CONF_FIELDS =    {
             'CITY': 'city',
             'TOPIC': 'topics',
             'MONTH': 'month',
             'MAX_ATTENDEES': 'maxAttendees',
             }
+
+# Fields for session query options.
+SESSION_FIELDS = {
+    'SPEAKER': 'speaker',
+    'DATE': 'date',
+    'TYPE': 'typeOfSession',
+    'TIME': 'startTime',
+}
 
 EMAIL_SCOPE = endpoints.EMAIL_SCOPE
 API_EXPLORER_CLIENT_ID = endpoints.API_EXPLORER_CLIENT_ID
@@ -443,7 +451,7 @@ class ConferenceApi(remote.Service):
             q = q.filter(formatted_query)
         return q
 
-    def _formatFilters(self, filters):
+    def _formatFilters(self, filters, queryType='conference'):
         """Parse, check validity and format user supplied filters."""
         formatted_filters = []
         inequality_field = None
@@ -452,7 +460,10 @@ class ConferenceApi(remote.Service):
             filtr = {field.name: getattr(f, field.name) for field in f.all_fields()}
 
             try:
-                filtr["field"] = FIELDS[filtr["field"]]
+                if queryType == 'conference':
+                    filtr["field"] = CONF_FIELDS[filtr["field"]]
+                elif queryType == 'conf_session':
+                    filtr["field"] = SESSION_FIELDS[filtr["field"]]
                 filtr["operator"] = OPERATORS[filtr["operator"]]
             except KeyError:
                 raise endpoints.BadRequestException("Filter contains invalid field or operator.")
@@ -489,6 +500,46 @@ class ConferenceApi(remote.Service):
         if displayName:
             setattr(sesh, 'creatorDisplayName', displayName)
         sesh.check_initialized()
+        return sesh
+
+    def _copySessionToFormAfterCreation(self, data, theSession):
+        """Copy data fields from Session object creation to SessionForm."""
+
+        extracted_session = theSession.get()
+        logging.info(extracted_session)
+        urlsafe_session_key = extracted_session.key.urlsafe()
+        data['websafeKey'] = urlsafe_session_key
+
+        prof = ndb.Key(Profile, data['creatorUserId']).get()
+        data['creatorDisplayName'] = prof.displayName
+
+        # create an instance of SessionForm
+        sesh = SessionForm(
+            name="",
+            highlights="",
+            speaker="",
+            date="",
+            duration=60,
+            startTime="",
+            typeOfSession="",
+            creatorUserId="",
+            websafeKey="",
+            creatorDisplayName="")
+        sesh.check_initialized()
+
+        # Pass all fields from data into the instance of SessionForm and return.
+        for field in sesh.all_fields():
+            if data[field.name] and data[field.name] != 'websafeKey':
+                if field.name == 'date':
+                    setattr(sesh, field.name, str(data[field.name]))
+                elif field.name == 'duration':
+                    setattr(sesh, field.name, str(data[field.name]))
+                else:
+                    setattr(sesh, field.name, data[field.name])
+            elif field.name == 'websafeKey':
+                setattr(sesh, field.name, str(session_object_key))
+        sesh.check_initialized()
+
         return sesh
 
 
@@ -545,10 +596,10 @@ class ConferenceApi(remote.Service):
         data['creatorUserId'] = request.creatorUserId = user_id
 
         # create Session & return (modified) SessionForm
-        Session(**data).put()
+        theSession = Session(**data).put()
 
         # create a SessionForm object and return.
-        session_object = self._copySessionToForm(data)
+        session_object = self._copySessionToFormAfterCreation(data, theSession)
 
         return session_object
 
@@ -605,7 +656,7 @@ class ConferenceApi(remote.Service):
         """Return formatted query from the submitted filters."""
         q = Session.query()
         # obtain parsed and formatted user query filters from _formatFilters
-        inequality_filter, filters = self._formatFilters(request.filters)
+        inequality_filter, filters = self._formatFilters(request.filters, queryType='conf_sessions')
 
         # Sort inequality filter first if it exists from _formatFilters.
         if not inequality_filter:
@@ -675,14 +726,16 @@ class ConferenceApi(remote.Service):
             http_method='GET', name='getSession')
     def getSession(self, request):
         """Return requested session (by websafeSessionKey)."""
-        # get Conference object from request; bail if not found
+        # get Session object from request; bail if not found
         sesh = ndb.Key(urlsafe=request.websafeSessionKey).get()
         if not sesh:
             raise endpoints.NotFoundException(
                 'No session found with key: %s' % request.websafeSessionKey)
-        prof = sesh.key.parent().get()
+        # fetch the creators display name using the session creator id.
+        prof = ndb.Key(Profile, sesh.creatorUserId).get()
+        creator_name = prof.displayName
         # return SessionForm
-        return self._copySessionToForm(sesh, getattr(prof, 'displayName'))
+        return self._copySessionToForm(sesh, creator_name)
 
     # Return sessions for the selected conference by websafeConferenceKey
     @endpoints.method(CONF_GET_REQUEST, SessionForms,
