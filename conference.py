@@ -958,6 +958,24 @@ class ConferenceApi(remote.Service):
         return self._sessionWishlist(request, addToWishlist=False)
 
 
+    @endpoints.method(message_types.VoidMessage, SessionForms,
+        path='getSessionWishlist',
+        http_method='POST', name='getSessionWishlist')
+    def getSessionsInWishlist(self, request):
+        """Return sessions within users wishlist."""
+        # fetch user profile.
+        prof = self._getProfileFromUser()
+        # obtain each session key within the users sessionKeysToAttend property.
+        sessionToAttendKeys = [ndb.Key(urlsafe=wssk) for wssk in prof.sessionKeysToAttend]
+        # fetch sessions from datastore using get_multi(array_of_keys).
+        wishlist_sessions = ndb.get_multi(sessionToAttendKeys)
+        # Return the set of sessions as a SessionForm object.
+        return SessionForms(
+            items=[self._copySessionToForm(sesh, "") \
+            for sesh in wishlist_sessions]
+        )
+
+
 
 # - - - Announcements - - - - - - - - - - - - - - - - - - - -
 
