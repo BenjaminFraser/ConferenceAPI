@@ -885,6 +885,7 @@ class ConferenceApi(remote.Service):
 
             # add session to wishlist
             prof.sessionKeysToAttend.append(wssk)
+            logging.info("Successfully added {0} to {1}'s wishlist.".format(sess.name, prof.displayName))
             retval = True
 
         # remove from user wishlist.
@@ -893,6 +894,7 @@ class ConferenceApi(remote.Service):
             if wssk in prof.sessionKeysToAttend:
                 # remove session key from users session keys.
                 prof.sessionKeysToAttend.remove(wssk)
+                logging.info("Successfully removed {0} from {1}'s wishlist.".format(sess.name, prof.displayName))
                 retval = True
             else:
                 retval = False
