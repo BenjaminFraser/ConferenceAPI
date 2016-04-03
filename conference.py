@@ -862,6 +862,46 @@ class ConferenceApi(remote.Service):
         return BooleanMessage(data=retval)
 
 
+    @ndb.transactional(xg=True)
+    def _sessionWishlist(self, request, addToWishlist=True):
+        """Add or remove session from user wishlist."""
+        retval = None
+        prof = self._getProfileFromUser() # get user Profile
+
+        # check if conf exists given websafeSessionKey
+        # get session; check that it exists
+        wssk = request.websafeSessionKey
+        sess = ndb.Key(urlsafe=wssk).get()
+        if not sess:
+            raise endpoints.NotFoundException(
+                'No session found with key: %s' % wssk)
+
+        # add to wishlist
+        if addToWishlist:
+            # check if user already has session in wishlist
+            if wssk in prof.sessionKeysToAttend:
+                raise ConflictException(
+                    "You have already added this session to your wishlist.")
+
+            # add session to wishlist
+            prof.sessionKeysToAttend.append(wssk)
+            retval = True
+
+        # remove from user wishlist.
+        else:
+            # check if user already has session in wishlist
+            if wssk in prof.sessionKeysToAttend:
+                # remove session key from users session keys.
+                prof.sessionKeysToAttend.remove(wssk)
+                retval = True
+            else:
+                retval = False
+
+        prof.put()
+        sess.put()
+        return BooleanMessage(data=retval)
+
+
     @endpoints.method(CONF_GET_REQUEST, BooleanMessage,
             path='conference/{websafeConferenceKey}',
             http_method='POST', name='registerForConference')
@@ -898,6 +938,24 @@ class ConferenceApi(remote.Service):
         return ConferenceForms(items=[self._copyConferenceToForm(conf, "")\
          for conf in conferences]
         )
+
+
+    @endpoints.method(SESH_GET_REQUEST, BooleanMessage,
+            path='session/{websafeSessionKey}/addToWishlist',
+            http_method='POST', name='addSessionToWishlist')
+    def addSessionToWishlist(self, request):
+        """Add currently selected session to user wishlist."""
+        return self._sessionWishlist(request)
+
+
+    @endpoints.method(SESH_GET_REQUEST, BooleanMessage,
+            path='session/{websafeSessionKey}/removeFromWishlist',
+            http_method='DELETE', name='removeSessionFromWishlist')
+    def removeSessionFromWishlist(self, request):
+        """Remove currently selected session from user wishlist."""
+        return self._sessionWishlist(request, addToWishlist=False)
+
+
 
 # - - - Announcements - - - - - - - - - - - - - - - - - - - -
 
