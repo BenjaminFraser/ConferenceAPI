@@ -40,5 +40,20 @@ indexes:
 
 - kind: Session
   properties:
+  - name: date
+  - name: name
+
+- kind: Session
+  properties:
   - name: speaker
+  - name: name
+
+- kind: Session
+  properties:
+  - name: startTime
+  - name: name
+
+- kind: Session
+  properties:
+  - name: typeOfSession
   - name: name

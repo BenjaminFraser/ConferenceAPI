@@ -686,7 +686,7 @@ class ConferenceApi(remote.Service):
             q = q.order(Session.name)
 
         for filtr in filters:
-            if filtr["field"] in ["month", "maxAttendees"]:
+            if filtr["field"] in ["date"]:
                 filtr["value"] = int(filtr["value"])
             # create a filterNode object containing the custom query, and return it.
             formatted_query = ndb.query.FilterNode(filtr["field"], filtr["operator"], filtr["value"])
