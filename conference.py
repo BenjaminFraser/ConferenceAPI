@@ -622,6 +622,13 @@ class ConferenceApi(remote.Service):
         # create Session & return (modified) SessionForm
         theSession = Session(**data).put()
 
+        # Create a task queue to set a featured speaker notification if the 
+        # speaker features in more than 1 of the selected conference sessions.
+        taskqueue.add(params={'speaker': theSession.speaker,
+            'wsck': request.websafeConferenceKey},
+            url='/tasks/get_featured_speaker'
+        )
+
         # create a SessionForm object and return.
         session_object = self._copySessionToFormAfterCreation(data, theSession)
 
@@ -1051,9 +1058,6 @@ class ConferenceApi(remote.Service):
                 'No sessions found for the speaker {0}'.format(featured_speaker))
 
         return featured_speak_msg
-
-
-
 
 
     # Endpoint for returning memcache announcement to user.
