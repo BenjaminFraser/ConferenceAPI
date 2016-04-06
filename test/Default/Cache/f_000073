@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+
+
+
+<html>
+<head>
+  <title>Datastore Viewer</title>
+  <link rel="stylesheet" href="/assets/common.css" type="text/css" media="screen">
+  <script src='/assets/jquery-1.8.2.min.js'></script>
+  
+  <script>/**
+ * @fileoverview Supporting Javascript for the datastore viewer.
+ * @author bquinlan@google.com (Brian Quinlan)
+ */
+function checkAllEntities() {
+  var check = $('#allkeys').prop('checked');
+  $('input[name="entity_key"]').attr('checked', check);
+  updateDeleteButtonAndCheckbox();
+}
+
+function updateDeleteButtonAndCheckbox() {
+  var checkboxes = $('input[name="entity_key"]');
+  var checked_checkboxes = checkboxes.filter(':checked');
+
+  if (checked_checkboxes.length) {
+    $('#delete_button').removeAttr('disabled');
+    $('#delete_button').removeClass('disabled');
+  } else {
+    $('#delete_button').attr('disabled', 'disabled');
+    $('#delete_button').addClass('disabled');
+  }
+
+  $('#allkeys').attr('checked',
+                     checkboxes.length == checked_checkboxes.length);
+}
+
+$(document).ready(function() {
+  $('#allkeys').click(checkAllEntities);
+
+  $('#create_button').click(function() {
+    params = {'kind' : $('#kind_input').attr('value'),
+              'next': 'http://localhost:8000/datastore?kind=Session'};
+
+    if ($('#namespace_input').length) {
+      params['namespace'] = $('#namespace_input').attr('value');
+    }
+
+    window.location = '/datastore/edit?' + $.param(params);
+    return false;
+  });
+
+  $('#delete_button').click(function() {
+    return confirm(
+        'Are you sure you wish to delete these entities? If your app uses ' +
+        'memcache to cache entities (e.g. uses ndb) then you may see stale ' +
+        'results unless you flush memcache.');
+  });
+
+  $('#memcache_flush_button').click(function() {
+    return confirm('Are you sure you want to flush all keys from the cache?');
+  });
+
+  $('input[name="entity_key"]').change(function() {
+    updateDeleteButtonAndCheckbox();
+  });
+
+  if ($('#delete_button').length) {
+    updateDeleteButtonAndCheckbox();
+  }
+
+  $('kind_input').focus();
+});</script>
+  <style type="text/css">
+#datastore-viewer #entity-manager table {
+  margin: 10px 0px;
+}
+#datastore-viewer #entity-manager table td {
+  vertical-align: bottom;
+}
+#datastore-viewer #entity-manager th {
+  font-weight: bold;
+  padding: 5px 0px;
+}
+#datastore-viewer select#kind_input {
+  text-align: left;
+}
+#datastore-viewer .ae-result-count {
+  float: left;
+  color: #999;
+}
+#datastore-viewer .ae-paginator {
+  float: right;
+}</style>
+
+</head>
+
+<body>
+  <header id="ae-googlebar" role="banner">
+    <aside>
+        Development SDK 1.9.33
+    </aside>
+    <h1>
+        <a href="/">
+          <img alt="Google" src="/assets/google_logo_41.png">
+        App Engine
+      </a>
+    </h1>
+  </header>
+  <div id="leftnavc">
+    <div class="sidebarHolder">
+      <h4><a href="/">dev~scalable-apps-1237</a></h4>
+      <div class="ae-content-sidebar">
+        <ul>
+          <li class="ae-sidebarlistitem">
+    <a href="/instances">Instances</a>
+  </li>
+          <li class="ae-sidebarlistitem selected">
+    <a href="/datastore">Datastore Viewer</a>
+  </li>
+          <li class="ae-sidebarlistitem">
+    <a href="/datastore-indexes">Datastore Indexes</a>
+  </li>
+          <li class="ae-sidebarlistitem">
+    <a href="/datastore-stats">Datastore Stats</a>
+  </li>
+          <li class="ae-sidebarlistitem">
+    <a href="/console">Interactive Console</a>
+  </li>
+          <li class="ae-sidebarlistitem">
+    <a href="/memcache">Memcache Viewer</a>
+  </li>
+          <li class="ae-sidebarlistitem">
+    <a href="/blobstore">Blobstore Viewer</a>
+  </li>
+          <li class="ae-sidebarlistitem">
+    <a href="/taskqueue">Task Queues</a>
+  </li>
+          <li class="ae-sidebarlistitem">
+    <a href="/cron">Cron Jobs</a>
+  </li>
+          <li class="ae-sidebarlistitem">
+    <a href="/xmpp">XMPP</a>
+  </li>
+          <li class="ae-sidebarlistitem">
+    <a href="/mail">Inbound Mail</a>
+  </li>
+          <li class="ae-sidebarlistitem">
+    <a href="/search">Full Text Search</a>
+  </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div id="rcnt">
+    <div id="content">
+      
+<div id="datastore-viewer">
+  <h3>Datastore Viewer</h3>
+
+  
+
+  <form action="/datastore" method="get">
+  
+    <div id="entity-manager" class="ae-settings-block">
+      <table>
+        <thead>
+          <tr>
+            
+            <th>
+              Entity Kind
+            </th>
+            <th>
+              &nbsp;
+            </th>
+          </tr>
+        </thead>
+        <tr>
+          
+          <td>
+            <select name="kind" class="ae-button" id="kind_input">
+              
+              <option value="Conference">Conference</option>
+              
+              <option value="Profile">Profile</option>
+              
+              <option value="Session" selected="selected">Session</option>
+              
+            </select>
+          </td>
+          <td>
+            <input type="submit" class="ae-button" value="List Entities"/>
+            <input type="button" id="create_button" class="ae-button" value="Create New Entity"/>
+            
+              <a href="/datastore?kind=Session&amp;namespace=">Select a different namespace</a>
+            
+          </td>
+        </tr>
+      </table>
+    </div>
+    
+  </form>
+
+  
+    <form action="/datastore" method="post">
+      <input type="hidden" name="xsrf_token" value="LuJCsQdpbh"/>
+      <input type="hidden" name="kind" value="Session"/>
+      <table class="ae-table ae-settings-block">
+        <thead>
+        <tr>
+          <th><input id="allkeys" type="checkbox" /></th>
+          <th>Key</th>
+          <th>Write Ops</th>
+          <th>ID</th>
+          <th>Key Name</th>
+          
+            <th ><a href="/datastore?kind=Session&amp;order=creatorUserId">creatorUserId</a></th>
+          
+            <th ><a href="/datastore?kind=Session&amp;order=date">date</a></th>
+          
+            <th ><a href="/datastore?kind=Session&amp;order=duration">duration</a></th>
+          
+            <th ><a href="/datastore?kind=Session&amp;order=highlights">highlights</a></th>
+          
+            <th ><a href="/datastore?kind=Session&amp;order=name">name</a></th>
+          
+            <th ><a href="/datastore?kind=Session&amp;order=speaker">speaker</a></th>
+          
+            <th ><a href="/datastore?kind=Session&amp;order=startTime">startTime</a></th>
+          
+            <th ><a href="/datastore?kind=Session&amp;order=typeOfSession">typeOfSession</a></th>
+          
+          
+        </tr>
+        
+          <tr>
+            <td>
+              <input id="key1" type="checkbox" name="entity_key" value="ahZkZXZ-c2NhbGFibGUtYXBwcy0xMjM3ckcLEgdQcm9maWxlIh1iZW5qYW1pbmRhdmlkZnJhc2VyQGdtYWlsLmNvbQwLEgpDb25mZXJlbmNlGAEMCxIHU2Vzc2lvbhgDDA"/>
+            </td>
+            <td>
+              <a href="/datastore/edit/ahZkZXZ-c2NhbGFibGUtYXBwcy0xMjM3ckcLEgdQcm9maWxlIh1iZW5qYW1pbmRhdmlkZnJhc2VyQGdtYWlsLmNvbQwLEgpDb25mZXJlbmNlGAEMCxIHU2Vzc2lvbhgDDA?next=http%3A//localhost%3A8000/datastore%3Fkind%3DSession">ahZkZXZ-...</a>
+            </td>
+            <td>
+              25
+            </td>
+            <td>
+              
+                3
+              
+            </td>
+            <td>
+              
+            </td>
+            
+              <td>benjamindavidfraser@gmail.com</td>
+            
+              <td>None</td>
+            
+              <td>60</td>
+            
+              <td>web design, coding</td>
+            
+              <td>Web masters</td>
+            
+              <td>Steve Jobs</td>
+            
+              <td>0800</td>
+            
+              <td>Keynote</td>
+            
+            
+          </tr>
+        
+          <tr>
+            <td>
+              <input id="key2" type="checkbox" name="entity_key" value="ahZkZXZ-c2NhbGFibGUtYXBwcy0xMjM3ckcLEgdQcm9maWxlIh1iZW5qYW1pbmRhdmlkZnJhc2VyQGdtYWlsLmNvbQwLEgpDb25mZXJlbmNlGAEMCxIHU2Vzc2lvbhgEDA"/>
+            </td>
+            <td>
+              <a href="/datastore/edit/ahZkZXZ-c2NhbGFibGUtYXBwcy0xMjM3ckcLEgdQcm9maWxlIh1iZW5qYW1pbmRhdmlkZnJhc2VyQGdtYWlsLmNvbQwLEgpDb25mZXJlbmNlGAEMCxIHU2Vzc2lvbhgEDA?next=http%3A//localhost%3A8000/datastore%3Fkind%3DSession">ahZkZXZ-...</a>
+            </td>
+            <td>
+              25
+            </td>
+            <td>
+              
+                4
+              
+            </td>
+            <td>
+              
+            </td>
+            
+              <td>benjamindavidfraser@gmail.com</td>
+            
+              <td>None</td>
+            
+              <td>60</td>
+            
+              <td>dogs, animals</td>
+            
+              <td>Poodle manics</td>
+            
+              <td>Steve Jobs</td>
+            
+              <td>0900</td>
+            
+              <td>Keynote</td>
+            
+            
+          </tr>
+        
+          <tr>
+            <td>
+              <input id="key3" type="checkbox" name="entity_key" value="ahZkZXZ-c2NhbGFibGUtYXBwcy0xMjM3ckgLEgdQcm9maWxlIh1iZW5qYW1pbmRhdmlkZnJhc2VyQGdtYWlsLmNvbQwLEgpDb25mZXJlbmNlGAEMCxIHU2Vzc2lvbhjpBww"/>
+            </td>
+            <td>
+              <a href="/datastore/edit/ahZkZXZ-c2NhbGFibGUtYXBwcy0xMjM3ckgLEgdQcm9maWxlIh1iZW5qYW1pbmRhdmlkZnJhc2VyQGdtYWlsLmNvbQwLEgpDb25mZXJlbmNlGAEMCxIHU2Vzc2lvbhjpBww?next=http%3A//localhost%3A8000/datastore%3Fkind%3DSession">ahZkZXZ-...</a>
+            </td>
+            <td>
+              25
+            </td>
+            <td>
+              
+                1001
+              
+            </td>
+            <td>
+              
+            </td>
+            
+              <td>benjamindavidfraser@gmail.com</td>
+            
+              <td>None</td>
+            
+              <td>60</td>
+            
+              <td>dogs, animals</td>
+            
+              <td>Poodle manics</td>
+            
+              <td>Steve Jobs</td>
+            
+              <td>0900</td>
+            
+              <td>Keynote</td>
+            
+            
+          </tr>
+        
+          <tr>
+            <td>
+              <input id="key4" type="checkbox" name="entity_key" value="ahZkZXZ-c2NhbGFibGUtYXBwcy0xMjM3ckgLEgdQcm9maWxlIh1iZW5qYW1pbmRhdmlkZnJhc2VyQGdtYWlsLmNvbQwLEgpDb25mZXJlbmNlGAEMCxIHU2Vzc2lvbhjRDww"/>
+            </td>
+            <td>
+              <a href="/datastore/edit/ahZkZXZ-c2NhbGFibGUtYXBwcy0xMjM3ckgLEgdQcm9maWxlIh1iZW5qYW1pbmRhdmlkZnJhc2VyQGdtYWlsLmNvbQwLEgpDb25mZXJlbmNlGAEMCxIHU2Vzc2lvbhjRDww?next=http%3A//localhost%3A8000/datastore%3Fkind%3DSession">ahZkZXZ-...</a>
+            </td>
+            <td>
+              25
+            </td>
+            <td>
+              
+                2001
+              
+            </td>
+            <td>
+              
+            </td>
+            
+              <td>benjamindavidfraser@gmail.com</td>
+            
+              <td>None</td>
+            
+              <td>60</td>
+            
+              <td>dogs, animals</td>
+            
+              <td>Poodle manics</td>
+            
+              <td>Steve Jobs</td>
+            
+              <td>0900</td>
+            
+              <td>Keynote</td>
+            
+            
+          </tr>
+        
+          <tr>
+            <td>
+              <input id="key5" type="checkbox" name="entity_key" value="ahZkZXZ-c2NhbGFibGUtYXBwcy0xMjM3ckgLEgdQcm9maWxlIh1iZW5qYW1pbmRhdmlkZnJhc2VyQGdtYWlsLmNvbQwLEgpDb25mZXJlbmNlGAEMCxIHU2Vzc2lvbhi5Fww"/>
+            </td>
+            <td>
+              <a href="/datastore/edit/ahZkZXZ-c2NhbGFibGUtYXBwcy0xMjM3ckgLEgdQcm9maWxlIh1iZW5qYW1pbmRhdmlkZnJhc2VyQGdtYWlsLmNvbQwLEgpDb25mZXJlbmNlGAEMCxIHU2Vzc2lvbhi5Fww?next=http%3A//localhost%3A8000/datastore%3Fkind%3DSession">ahZkZXZ-...</a>
+            </td>
+            <td>
+              25
+            </td>
+            <td>
+              
+                3001
+              
+            </td>
+            <td>
+              
+            </td>
+            
+              <td>benjamindavidfraser@gmail.com</td>
+            
+              <td>None</td>
+            
+              <td>60</td>
+            
+              <td>dogs, animals</td>
+            
+              <td>Poodle manics</td>
+            
+              <td>Steve Jobs</td>
+            
+              <td>0900</td>
+            
+              <td>Keynote</td>
+            
+            
+          </tr>
+        
+          <tr>
+            <td>
+              <input id="key6" type="checkbox" name="entity_key" value="ahZkZXZ-c2NhbGFibGUtYXBwcy0xMjM3ckgLEgdQcm9maWxlIh1iZW5qYW1pbmRhdmlkZnJhc2VyQGdtYWlsLmNvbQwLEgpDb25mZXJlbmNlGAEMCxIHU2Vzc2lvbhi6Fww"/>
+            </td>
+            <td>
+              <a href="/datastore/edit/ahZkZXZ-c2NhbGFibGUtYXBwcy0xMjM3ckgLEgdQcm9maWxlIh1iZW5qYW1pbmRhdmlkZnJhc2VyQGdtYWlsLmNvbQwLEgpDb25mZXJlbmNlGAEMCxIHU2Vzc2lvbhi6Fww?next=http%3A//localhost%3A8000/datastore%3Fkind%3DSession">ahZkZXZ-...</a>
+            </td>
+            <td>
+              25
+            </td>
+            <td>
+              
+                3002
+              
+            </td>
+            <td>
+              
+            </td>
+            
+              <td>benjamindavidfraser@gmail.com</td>
+            
+              <td>None</td>
+            
+              <td>60</td>
+            
+              <td>random stuff</td>
+            
+              <td>Random</td>
+            
+              <td>Steve Jobs</td>
+            
+              <td>1100</td>
+            
+              <td>lecture</td>
+            
+            
+          </tr>
+        
+          <tr>
+            <td>
+              <input id="key7" type="checkbox" name="entity_key" value="ahZkZXZ-c2NhbGFibGUtYXBwcy0xMjM3ckgLEgdQcm9maWxlIh1iZW5qYW1pbmRhdmlkZnJhc2VyQGdtYWlsLmNvbQwLEgpDb25mZXJlbmNlGAEMCxIHU2Vzc2lvbhi7Fww"/>
+            </td>
+            <td>
+              <a href="/datastore/edit/ahZkZXZ-c2NhbGFibGUtYXBwcy0xMjM3ckgLEgdQcm9maWxlIh1iZW5qYW1pbmRhdmlkZnJhc2VyQGdtYWlsLmNvbQwLEgpDb25mZXJlbmNlGAEMCxIHU2Vzc2lvbhi7Fww?next=http%3A//localhost%3A8000/datastore%3Fkind%3DSession">ahZkZXZ-...</a>
+            </td>
+            <td>
+              25
+            </td>
+            <td>
+              
+                3003
+              
+            </td>
+            <td>
+              
+            </td>
+            
+              <td>benjamindavidfraser@gmail.com</td>
+            
+              <td>None</td>
+            
+              <td>60</td>
+            
+              <td>random stdffsfsa</td>
+            
+              <td>Random</td>
+            
+              <td>Steve Jobs</td>
+            
+              <td>1100</td>
+            
+              <td>lecture</td>
+            
+            
+          </tr>
+        
+          <tr>
+            <td>
+              <input id="key8" type="checkbox" name="entity_key" value="ahZkZXZ-c2NhbGFibGUtYXBwcy0xMjM3ckgLEgdQcm9maWxlIh1iZW5qYW1pbmRhdmlkZnJhc2VyQGdtYWlsLmNvbQwLEgpDb25mZXJlbmNlGAEMCxIHU2Vzc2lvbhihHww"/>
+            </td>
+            <td>
+              <a href="/datastore/edit/ahZkZXZ-c2NhbGFibGUtYXBwcy0xMjM3ckgLEgdQcm9maWxlIh1iZW5qYW1pbmRhdmlkZnJhc2VyQGdtYWlsLmNvbQwLEgpDb25mZXJlbmNlGAEMCxIHU2Vzc2lvbhihHww?next=http%3A//localhost%3A8000/datastore%3Fkind%3DSession">ahZkZXZ-...</a>
+            </td>
+            <td>
+              25
+            </td>
+            <td>
+              
+                4001
+              
+            </td>
+            <td>
+              
+            </td>
+            
+              <td>benjamindavidfraser@gmail.com</td>
+            
+              <td>None</td>
+            
+              <td>60</td>
+            
+              <td>random stdffsfsa</td>
+            
+              <td>Random</td>
+            
+              <td>Steve Jobs</td>
+            
+              <td>1100</td>
+            
+              <td>lecture</td>
+            
+            
+          </tr>
+        
+      </table>
+      <div>
+          <div class="ae-settings-block">
+            <div>
+              <input id="delete_button" class="ae-button" name="action:delete_entities" type="submit" value="Delete" />
+              <input id="memcache_flush_button" class="ae-button" type="submit" name="action:flush_memcache" value="Flush Memcache" />
+            </div>
+          </div>
+          <div class="ae-settings-block">
+            <div>
+              
+            </div>
+            <div class="ae-result-count">
+              
+                <div>
+                  Results 1 - 8 of
+                  8
+                </div>
+              
+            </div>
+          </div>
+        </div>
+    </form>
+  
+</div>
+
+    </div>
+  </div>
+</body>
+</html>

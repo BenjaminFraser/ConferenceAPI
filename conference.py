@@ -624,7 +624,7 @@ class ConferenceApi(remote.Service):
 
         # Create a task queue to set a featured speaker notification if the 
         # speaker features in more than 1 of the selected conference sessions.
-        taskqueue.add(params={'speaker': theSession.speaker,
+        taskqueue.add(params={'speaker': data['speaker'],
             'wsck': request.websafeConferenceKey},
             url='/tasks/get_featured_speaker'
         )
@@ -1007,7 +1007,7 @@ class ConferenceApi(remote.Service):
         if confs:
             # If there are almost sold out conferences,
             # format announcement and set it in memcache
-            logging.debug("Found %s conferences" % len(confs))
+            logging.info("Found %s conferences" % len(confs))
             announcement = ANNOUNCEMENT_TPL % (
                 ', '.join(conf.name for conf in confs))
             memcache.set(MEMCACHE_ANNOUNCEMENTS_KEY, announcement)
@@ -1015,7 +1015,7 @@ class ConferenceApi(remote.Service):
             # If there are no sold out conferences,
             # delete the memcache announcements entry
             announcement = ""
-            logging.debug("The announcement key has been deleted. %s" % MEMCACHE_ANNOUNCEMENTS_KEY)
+            logging.info("The announcement key has been deleted. %s" % MEMCACHE_ANNOUNCEMENTS_KEY)
             print ""
             memcache.delete(MEMCACHE_ANNOUNCEMENTS_KEY)
 
@@ -1027,30 +1027,31 @@ class ConferenceApi(remote.Service):
         """Query speaker for current conference and create a memcache
         entry containing all the featured speakers sessions for that conference."""
         # check if conf exists given websafeConfKey and fetch.
-        conf = ndb.Key(urlsafe=wsck).get()
+        conf = ndb.Key(urlsafe=websafeConferenceKey).get()
         if not conf:
             raise endpoints.NotFoundException(
                 'No conference found with key: %s' % wsck)
         # query for other sessions within the conference by the featured speaker.
         conf_sessions = Session.query(ancestor=conf.key)
         # query for sessions with the selected featured speaker.
-        speaker_conf_sessions = conf_sessions.query(Session.speaker == featured_speaker).fetch(
+        speaker_conf_sessions = conf_sessions.filter(Session.speaker == featured_speaker).fetch(
             projection=[Session.name])
 
         if speaker_conf_sessions:
             if len(speaker_conf_sessions) > 1:
                 # if the speaker is featured in more than 1 session within the conference,
                 # format the announcement of those sessions and set it in memcache.
-                logging.debug("{0} was found to be featured in {1} sessions".format(
+                logging.info("{0} was found to be featured in {1} sessions".format(
                     featured_speaker, len(speaker_conf_sessions)))
                 featured_speak_msg = FEATURED_SESS_SPKR % (featured_speaker, ', '.join(
                             sess.name for sess in speaker_conf_sessions))
+                logging.info(featured_speak_msg)
                 memcache.set(MEMCACHE_FEAT_SPK_KEY, featured_speak_msg)
             else:
                 # There are no other sessions for this conference that the speaker is attending
                 # set featured speaker msg to its previous value.
                 featured_speak_msg = (memcache.get(MEMCACHE_FEAT_SPK_KEY) or "")
-                logging.debug("There are no other sessions featured by the speaker.")
+                logging.info("There are no other sessions featured by the speaker.")
         
         # if no speaker sessions were found within the conference raise exception.
         if not speaker_conf_sessions:
@@ -1068,7 +1069,7 @@ class ConferenceApi(remote.Service):
         """Return Announcement from memcache."""
         # Return announcement using StringMessage.
         announcement = memcache.get(MEMCACHE_ANNOUNCEMENTS_KEY)
-        logging.debug("The announcement key contains: {0}".format(announcement))
+        logging.info("The announcement key contains: {0}".format(announcement))
         return StringMessage(data=announcement or "")
 
 
@@ -1080,7 +1081,7 @@ class ConferenceApi(remote.Service):
         """Return featured speaker message from memcache."""
         # Return featured speaker message using StringMessage.
         spkr_msg = memcache.get(MEMCACHE_FEAT_SPK_KEY)
-        logging.debug("The featured speaker key contains: {0}".format(spkr_msg))
+        logging.info("The featured speaker key contains: {0}".format(spkr_msg))
         return StringMessage(data=spkr_msg or "")
 
 
