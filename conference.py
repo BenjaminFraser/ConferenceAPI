@@ -1071,5 +1071,18 @@ class ConferenceApi(remote.Service):
         logging.debug("The announcement key contains: {0}".format(announcement))
         return StringMessage(data=announcement or "")
 
+
+    # Endpoint for returning memcache message for featured speaker sessions.
+    @endpoints.method(message_types.VoidMessage, StringMessage,
+            path='conference/session/featuredspeaker/get',
+            http_method='GET', name='getFeaturedSpeaker')
+    def getFeaturedSpeaker(self, request):
+        """Return featured speaker message from memcache."""
+        # Return featured speaker message using StringMessage.
+        spkr_msg = memcache.get(MEMCACHE_FEAT_SPK_KEY)
+        logging.debug("The featured speaker key contains: {0}".format(spkr_msg))
+        return StringMessage(data=spkr_msg or "")
+
+
 # registers API
 api = endpoints.api_server([ConferenceApi]) 
