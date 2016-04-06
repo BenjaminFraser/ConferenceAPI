@@ -90,6 +90,10 @@ MEMCACHE_ANNOUNCEMENTS_KEY = "RECENT_ANNOUNCEMENTS"
 ANNOUNCEMENT_TPL = ('Last chance to attend! The following conferences '
                     'are nearly sold out: %s')
 
+MEMCACHE_FEAT_SPK_KEY = "CONFERENCE FEATURED SPEAKER"
+FEATURED_SESS_SPKR = ('%s is also a speaker at the following sessions '
+                      'within this conference: %s')
+
 # Resource container for conference key request.
 # NOTE: Resource containers are required when data is passed to us through
 # The url request, or querystring data. It still allows us to pass the 
@@ -811,6 +815,7 @@ class ConferenceApi(remote.Service):
         )
 
 
+
 # - - - Registration - - - - - - - - - - - - - - - - - - - -
     
     @ndb.transactional(xg=True)
@@ -1008,6 +1013,48 @@ class ConferenceApi(remote.Service):
             memcache.delete(MEMCACHE_ANNOUNCEMENTS_KEY)
 
         return announcement
+
+
+    @staticmethod
+    def _cacheFeaturedSpeaker(featured_speaker, websafeConferenceKey):
+        """Query speaker for current conference and create a memcache
+        entry containing all the featured speakers sessions for that conference."""
+        # check if conf exists given websafeConfKey and fetch.
+        conf = ndb.Key(urlsafe=wsck).get()
+        if not conf:
+            raise endpoints.NotFoundException(
+                'No conference found with key: %s' % wsck)
+        # query for other sessions within the conference by the featured speaker.
+        conf_sessions = Session.query(ancestor=conf.key)
+        # query for sessions with the selected featured speaker.
+        speaker_conf_sessions = conf_sessions.query(Session.speaker == featured_speaker).fetch(
+            projection=[Session.name])
+
+        if speaker_conf_sessions:
+            if len(speaker_conf_sessions) > 1:
+                # if the speaker is featured in more than 1 session within the conference,
+                # format the announcement of those sessions and set it in memcache.
+                logging.debug("{0} was found to be featured in {1} sessions".format(
+                    featured_speaker, len(speaker_conf_sessions)))
+                featured_speak_msg = FEATURED_SESS_SPKR % (featured_speaker, ', '.join(
+                            sess.name for sess in speaker_conf_sessions))
+                memcache.set(MEMCACHE_FEAT_SPK_KEY, featured_speak_msg)
+            else:
+                # There are no other sessions for this conference that the speaker is attending
+                # set featured speaker msg to its previous value.
+                featured_speak_msg = (memcache.get(MEMCACHE_FEAT_SPK_KEY) or "")
+                logging.debug("There are no other sessions featured by the speaker.")
+        
+        # if no speaker sessions were found within the conference raise exception.
+        if not speaker_conf_sessions:
+            raise endpoints.NotFoundException(
+                'No sessions found for the speaker {0}'.format(featured_speaker))
+
+        return featured_speak_msg
+
+
+
+
 
     # Endpoint for returning memcache announcement to user.
     @endpoints.method(message_types.VoidMessage, StringMessage,
